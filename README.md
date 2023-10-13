@@ -11,4 +11,4 @@ In the subsequent stage of the project, I harness the power of the STM32F405RGT6
 ## The Software tools used in this project include
 
 1. KICAD software for circuit design
-2. 
+2. STM32CubeIDE for writing the firmware
