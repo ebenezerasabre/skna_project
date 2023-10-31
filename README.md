@@ -7,7 +7,7 @@ In the subsequent stage of the project, I harness the power of the STM32F405RGT6
 
 
 ## The major Components used in the design of the PCB include
-ECG Module(SPI): ADS1292RIPBS
+ECG Module(ADC): ADS8232
 IMU sensor(I2C): BNO085
 Flash Memory(SPI): MX25L25645GM2I-08G
 Power:

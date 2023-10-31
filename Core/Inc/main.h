@@ -57,16 +57,22 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define ADS_START_Pin GPIO_PIN_4
+#define ADS_START_Pin GPIO_PIN_13
 #define ADS_START_GPIO_Port GPIOC
-#define ADS_RESET_Pin GPIO_PIN_5
-#define ADS_RESET_GPIO_Port GPIOC
-#define ADS_BUSY_Pin GPIO_PIN_0
-#define ADS_BUSY_GPIO_Port GPIOB
+#define LO_P_Pin GPIO_PIN_10
+#define LO_P_GPIO_Port GPIOB
+#define LO_M_Pin GPIO_PIN_11
+#define LO_M_GPIO_Port GPIOB
 #define SPI2_CS_Pin GPIO_PIN_12
 #define SPI2_CS_GPIO_Port GPIOB
-#define SPI1_CS_Pin GPIO_PIN_8
-#define SPI1_CS_GPIO_Port GPIOA
+#define LED_STATUS_Pin GPIO_PIN_10
+#define LED_STATUS_GPIO_Port GPIOC
+#define LO_PX_Pin GPIO_PIN_12
+#define LO_PX_GPIO_Port GPIOC
+#define LO_MX_Pin GPIO_PIN_2
+#define LO_MX_GPIO_Port GPIOD
+#define SW_BUTTON_Pin GPIO_PIN_8
+#define SW_BUTTON_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
