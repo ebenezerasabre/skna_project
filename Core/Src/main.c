@@ -22,6 +22,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "w25Qxx.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -71,6 +73,12 @@ static void MX_USART6_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+// unique ID for w25q nor flash
+uint32_t ID = 0;
+//uint8_t RxData[512];
+uint8_t RxData[4608]; // read 18 pages 18 * 256
+
+
 /* USER CODE END 0 */
 
 /**
@@ -108,6 +116,26 @@ int main(void)
   MX_ADC1_Init();
   MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  // for W25Q SPI NOR flash
+  W25Q_Reset();
+  ID = W25Q_ReadID();
+
+  // data
+
+  // change the ID
+  if(0){
+	  // data has been store at an offset of 85 and 16
+	  // read first 512
+
+	  W25Q_Read(1, 85, 20, RxData);			// read 20bytes from page1 offset 85
+	  W25Q_Fast_Read(0, 0, 512, RxData); // read 512 bytes from page0
+
+	  W25Q_Read(17, 10, 20, RxData);			// read 20bytes from page17 offset 10
+	  W25Q_Fast_Read(16, 0, 512, RxData);	// fast read 512bytes page16 no offset
+
+	  W25Q_Fast_Read(0, 0, 4608, RxData); // read 18 pages from start no offset
+  }
 
   /* USER CODE END 2 */
 
@@ -394,7 +422,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, ADS_START_Pin|LED_STATUS_Pin|LO_PX_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, SW2_BUTTON_Pin|LED_STATUS_Pin|LO_PX_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(SPI2_CS_GPIO_Port, SPI2_CS_Pin, GPIO_PIN_SET);
@@ -402,8 +430,8 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(SW_BUTTON_GPIO_Port, SW_BUTTON_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : ADS_START_Pin LED_STATUS_Pin LO_PX_Pin */
-  GPIO_InitStruct.Pin = ADS_START_Pin|LED_STATUS_Pin|LO_PX_Pin;
+  /*Configure GPIO pins : SW2_BUTTON_Pin LED_STATUS_Pin LO_PX_Pin */
+  GPIO_InitStruct.Pin = SW2_BUTTON_Pin|LED_STATUS_Pin|LO_PX_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
