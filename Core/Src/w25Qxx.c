@@ -89,12 +89,13 @@ void W25Q_Read(uint32_t startPage, uint8_t offset, uint32_t size, uint8_t * rDat
 	csHIGH();				// pull the CS High
 }
 
+
 void W25Q_Fast_read(uint32_t startPage, uint8_t offset, uint32_t size, uint8_t * rData){
 	uint8_t tData[6];
 	uint32_t memAddr = (startPage * 256) + offset;
 
 	if(numBlock < 512){
-		tData[0] = 0x0B; 	// enable Fast Read
+		tData[0] = 0x0B; 					// enable Fast Read
 		tData[1] = (memAddr >> 16) & 0xFF;	// MSB of Mem Address
 		tData[2] = (memAddr >> 8) & 0xFF;
 		tData[3] =  memAddr & 0xFF;			// LSB of the Mem Address
@@ -105,7 +106,7 @@ void W25Q_Fast_read(uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *
 		tData[2] = (memAddr >> 16) & 0xFF;
 		tData[3] = (memAddr >> 8) & 0xFF;
 		tData[4] =  memAddr & 0xFF;			// LSB of the Mem Address
-		tData[5] = 0; // Dummy clock
+		tData[5] = 0; 						// Dummy clock
 	}
 
 	csLOW();				// pull the CS Low
@@ -117,6 +118,128 @@ void W25Q_Fast_read(uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *
 	SPI_Read(rData, size);	// Read the data
 	csHIGH();				// pull the CS High
 }
+
+
+void write_enable(void){
+	uint8_t tData = 0x06;	// enable write
+	csLOW();
+	SPI_Write(&tData, 1);
+	csHIGH();
+	HAL_Delay(5);	// 5ms delay
+}
+
+
+void write_disable(void){
+	uint8_t tData = 0x04;	// disable write
+	csLOW();
+	SPI_Write(&tData, 1);
+	csHIGH();
+	HAL_Delay(5);								// 5ms delay
+}
+
+
+void W25Q_erase_sector(uint16_t numSector){
+	uint8_t tData[5];
+	uint32_t memAddr = numSector * 16 * 256; 	// Each sector contains 16 pages * 256 bytes
+
+	write_enable();
+
+	if(numBlock < 512){
+		tData[0] = 0x20; 					// erase sector
+		tData[1] = (memAddr >> 16) & 0xFF;	// MSB of Mem Address
+		tData[2] = (memAddr >> 8) & 0xFF;
+		tData[3] =  memAddr & 0xFF;			// LSB of the Mem Address
+
+		csLOW();
+		SPI_Write(tData, 4);
+		csHIGH();
+	} else {
+		tData[0] = 0x20; 					// erase sector
+		tData[1] = (memAddr >> 24) & 0xFF;	// MSB of Mem Address
+		tData[2] = (memAddr >> 16) & 0xFF;
+		tData[3] = (memAddr >> 8) & 0xFF;
+		tData[4] =  memAddr & 0xFF;			// LSB of the Mem Address
+
+		csLOW();
+		SPI_Write(tData, 5);
+		csHIGH();
+	}
+
+	HAL_Delay(450); // 450 ms for sector erase
+
+	write_disable();
+
+}
+
+uint32_t bytestowrite(uint32_t size, uint16_t offset){
+	if((size + offset) < 256) return size;
+	else return (256 - offset);
+}
+
+void W25Q_Write_Page(uint32_t page, uint16_t offset, uint32_t size, uint8_t * data){
+	uint8_t tData[266];
+	uint32_t startPage = page;
+	uint32_t endPage = startPage + ((size + offset-1)/256);
+	uint32_t numPages = endPage - startPage + 1;
+
+	// before we write, we have to erase first
+	uint16_t startSector = startPage / 16;
+	uint16_t endSector = endPage / 16;
+	uint16_t numSectors = endSector - startSector + 1;
+
+	for(uint16_t i = 0; i < numSectors; i++){
+		W25Q_erase_sector(startSector++);
+	}
+
+	uint32_t dataPosition = 0;
+
+	// write the data
+	for(uint32_t i=0; i < numPages; i++){
+		uint32_t memAddr = (startPage * 256) + offset;
+		uint16_t bytesremaining = bytestowrite(size, offset);
+		int ndx = 0;
+
+		write_enable();
+
+
+		if(numBlock < 512){
+			tData[0] = 0x02; 					// page program
+			tData[1] = (memAddr >> 16) & 0xFF;	// MSB of Mem Address
+			tData[2] = (memAddr >> 8) & 0xFF;
+			tData[3] =  memAddr & 0xFF;			// LSB of the Mem Address
+
+			ndx = 4;
+		} else {
+			tData[0] = 0x02; 					// erase sector
+			tData[1] = (memAddr >> 24) & 0xFF;	// MSB of Mem Address
+			tData[2] = (memAddr >> 16) & 0xFF;
+			tData[3] = (memAddr >> 8) & 0xFF;
+			tData[4] =  memAddr & 0xFF;			// LSB of the Mem Address
+			ndx = 5;
+		}
+		uint16_t bytestosend = bytesremaining + ndx;
+
+		for(uint16_t i=0; i<bytesremaining; i++){
+			tData[ndx++] = data[i+dataPosition];
+		}
+		csLOW();
+		SPI_Write(tData, bytestosend);
+		csHIGH();
+
+		startPage++;
+		offset = 0;
+		size = size - bytesremaining;
+		dataPosition += bytesremaining;
+
+		HAL_Delay(5);
+		write_disable();
+
+
+	}
+
+
+}
+
 
 
 

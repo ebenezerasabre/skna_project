@@ -5,4 +5,9 @@
 ../Core/Src/w25Qxx.c:39:6:W25Q_Reset	1
 ../Core/Src/w25Qxx.c:51:10:W25Q_ReadID	1
 ../Core/Src/w25Qxx.c:65:6:W25Q_Read	1
-../Core/Src/w25Qxx.c:92:6:W25Q_Fast_read	1
+../Core/Src/w25Qxx.c:93:6:W25Q_Fast_read	1
+../Core/Src/w25Qxx.c:123:6:write_enable	1
+../Core/Src/w25Qxx.c:132:6:write_disable	1
+../Core/Src/w25Qxx.c:141:6:W25Q_erase_sector	1
+../Core/Src/w25Qxx.c:174:10:bytestowrite	2
+../Core/Src/w25Qxx.c:179:6:W25Q_Write_Page	4

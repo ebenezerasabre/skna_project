@@ -23,6 +23,8 @@
 /* USER CODE BEGIN Includes */
 
 #include "w25Qxx.h"
+#include "stdio.h"
+#include "string.h"
 
 /* USER CODE END Includes */
 
@@ -67,6 +69,9 @@ static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_USART6_UART_Init(void);
 /* USER CODE BEGIN PFP */
+
+void read_flash();
+void read_erase_flash();
 
 /* USER CODE END PFP */
 
@@ -125,16 +130,16 @@ int main(void)
 
   // change the ID
   if(0){
-	  // data has been store at an offset of 85 and 16
-	  // read first 512
 
-	  W25Q_Read(1, 85, 20, RxData);			// read 20bytes from page1 offset 85
-	  W25Q_Fast_Read(0, 0, 512, RxData); // read 512 bytes from page0
+	  // read_flash();
 
-	  W25Q_Read(17, 10, 20, RxData);			// read 20bytes from page17 offset 10
-	  W25Q_Fast_Read(16, 0, 512, RxData);	// fast read 512bytes page16 no offset
+	  /**
+	   * Read and erase data
+	   */
 
-	  W25Q_Fast_Read(0, 0, 4608, RxData); // read 18 pages from start no offset
+	  read_erase_flash();
+
+
   }
 
   /* USER CODE END 2 */
@@ -461,6 +466,41 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+
+void read_flash(){
+		// data has been store at an offset of 85 and 16
+		// read first 512
+
+		W25Q_Read(1, 85, 20, RxData);			// read 20bytes from page1 offset 85
+		W25Q_Fast_Read(0, 0, 512, RxData); // read 512 bytes from page0
+
+		W25Q_Read(17, 10, 20, RxData);			// read 20bytes from page17 offset 10
+		W25Q_Fast_Read(16, 0, 512, RxData);	// fast read 512bytes page16 no offset
+
+		W25Q_Fast_Read(0, 0, 4608, RxData); // read 18 pages from start no offset
+
+}
+
+
+void read_erase_flash(){
+		// data has been store at an offset of 85 and 16
+		// read first 512
+
+		W25Q_Read(1, 85, 20, RxData);			// read 20bytes from page1 offset 85
+		W25Q_erase_sector(0);
+		W25Q_Read(1, 85, 20, RxData);
+
+
+		W25Q_Read(17, 10, 20, RxData);			// read 20bytes from page17 offset 10
+		W25Q_erase_sector(1);
+		W25Q_Read(17, 10, 20, RxData);
+
+
+}
+
+
+
 
 /* USER CODE END 4 */
 
