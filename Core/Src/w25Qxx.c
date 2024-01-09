@@ -176,6 +176,11 @@ uint32_t bytestowrite(uint32_t size, uint16_t offset){
 	else return (256 - offset);
 }
 
+uint32_t bytestomodify(uint32_t size, uint16_t offset){
+	if((size + offset) < 4096) return size;
+	else return (4096 - offset);
+}
+
 void W25Q_Write_Page(uint32_t page, uint16_t offset, uint32_t size, uint8_t * data){
 	uint8_t tData[266];
 	uint32_t startPage = page;
@@ -222,9 +227,20 @@ void W25Q_Write_Page(uint32_t page, uint16_t offset, uint32_t size, uint8_t * da
 		for(uint16_t i=0; i<bytesremaining; i++){
 			tData[ndx++] = data[i+dataPosition];
 		}
-		csLOW();
-		SPI_Write(tData, bytestosend);
-		csHIGH();
+
+		/*
+		 * He faced issues when writing more than 250 bytes into the flash
+		 */
+		if(bytestosend > 250){
+			csLOW();
+			SPI_Write(tData, 100);
+			SPI_Write(tData + 100, bytestosend-100);
+			csHIGH();
+		} else {
+			csLOW();
+			SPI_Write(tData, bytestosend);
+			csHIGH();
+		}
 
 		startPage++;
 		offset = 0;
@@ -233,12 +249,48 @@ void W25Q_Write_Page(uint32_t page, uint16_t offset, uint32_t size, uint8_t * da
 
 		HAL_Delay(5);
 		write_disable();
-
-
 	}
-
-
 }
+
+
+void W25Q_update_Page(uint32_t page, uint16_t offset, uint32_t size, uint8_t * data){
+	uint16_t startSector = page / 16;
+	uint16_t endSector = (page + ((size + offset - 1) / 256)) / 16;
+	uint16_t numSectors = endSector - startSector + 1;
+
+	uint8_t previousData[4096];
+	uint32_t sectorOffset = ((page % 16) * 256) + offset;
+	uint32_t dataindex = 0;
+
+	for(uint16_t i=0; i < numSectors; i++){
+		uint32_t startPage = startSector * 16;
+		W25Q_FastRead(startPage, 0, 4096, previousData);
+
+		uint16_t bytesRemaining = bytestomodify(size, sectorOffset);
+		for(uint16_t i=0; i < bytesRemaining; i++){
+			previousData[i + sectorOffset] = data[i + dataindex];
+		}
+
+		W25Q_Write(startPage, 0, 4096, previousData);
+
+		startSector++;
+		sectorOffset = 0;
+		dataindex = dataindex + bytesRemaining;
+		size = size - bytesRemaining;
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
