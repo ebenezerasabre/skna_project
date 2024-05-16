@@ -1,0 +1,12 @@
+../Core/Src/adc.c:33:6:gpio_init	4	static
+../Core/Src/adc.c:42:6:adc_init	4	static
+../Core/Src/adc.c:78:6:adc_cnvrsn	4	static
+../Core/Src/adc.c:88:5:adc_read	4	static
+../Core/Src/adc.c:96:6:prgrm_state_set	16	static
+../Core/Src/adc.c:100:6:prgrm_state_dsply	16	static
+../Core/Src/adc.c:104:6:adc_smp_sgnl	16	static
+../Core/Src/adc.c:110:6:led_off	4	static
+../Core/Src/adc.c:114:6:led_on	4	static
+../Core/Src/adc.c:119:6:user_led_toggle	8	static
+../Core/Src/adc.c:124:6:use_delay	4	static
+../Core/Src/adc.c:129:6:btn_prsd	8	static

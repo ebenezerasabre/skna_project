@@ -26,11 +26,13 @@ void csHIGH(void){
 
 
 void SPI_Read(uint8_t * data, uint16_t len){
-	HAL_SPI_Receive(&w25Q_SPI, data, len, 5000);
+//	HAL_SPI_Receive(&w25Q_SPI, data, len, 5000);
+	HAL_SPI_Receive(&w25Q_SPI, data, len, 3000);
 }
 
 void SPI_Write(uint8_t * data, uint16_t len){
-	HAL_SPI_Transmit(&w25Q_SPI, data, len, 2000);
+//	HAL_SPI_Transmit(&w25Q_SPI, data, len, 2000);
+	HAL_SPI_Transmit(&w25Q_SPI, data, len, 1000);
 }
 
 /*
@@ -41,8 +43,8 @@ void W25Q_Reset(void){
 	tData[0] = 0x66;	// enable reset
 	tData[1] = 0x99;	// Reset
 	csLOW();
-	SPI_Write(tData, 2);
-//	HAL_SPI_Transmit(&w25Q_SPI, tData, 2, 1000);
+//	SPI_Write(tData, 2);
+	HAL_SPI_Transmit(&w25Q_SPI, tData, 2, 1000);
 	csHIGH();
 	HAL_Delay(100); // let device settle properly after reset
 }
@@ -53,9 +55,10 @@ uint32_t W25Q_ReadID(void){
 	uint8_t	rData[3];
 	csLOW();
 	SPI_Write(&tData, 1);
-	SPI_Read(&rData[0], 3);
+
 //	HAL_SPI_Transmit(&w25Q_SPI, &tData, 1, 1000);
 //	HAL_SPI_Receive(&w25Q_SPI, &rData[0], 3, 3000);
+	SPI_Read(&rData[0], 3);
 	csHIGH();
 	return ((rData[0]<<16) | (rData[1]<<8) | rData[2]); // a 24_bit JEDEC ID
 }
@@ -83,7 +86,7 @@ void W25Q_Read(uint32_t startPage, uint8_t offset, uint32_t size, uint8_t * rDat
 	if(numBlock < 512){
 		SPI_Write(tData, 4);
 	} else {
-		SPI_Write(rData, 5);
+		SPI_Write(tData, 5);
 	}
 	SPI_Read(rData, size);	// Read the data
 	csHIGH();				// pull the CS High
@@ -264,14 +267,14 @@ void W25Q_update_Page(uint32_t page, uint16_t offset, uint32_t size, uint8_t * d
 
 	for(uint16_t i=0; i < numSectors; i++){
 		uint32_t startPage = startSector * 16;
-		W25Q_FastRead(startPage, 0, 4096, previousData);
+		W25Q_Fast_Read(startPage, 0, 4096, previousData);
 
 		uint16_t bytesRemaining = bytestomodify(size, sectorOffset);
 		for(uint16_t i=0; i < bytesRemaining; i++){
 			previousData[i + sectorOffset] = data[i + dataindex];
 		}
 
-		W25Q_Write(startPage, 0, 4096, previousData);
+		W25Q_Write_Page(startPage, 0, 4096, previousData);
 
 		startSector++;
 		sectorOffset = 0;

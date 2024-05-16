@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -25,6 +26,9 @@
 #include "w25Qxx.h"
 #include "stdio.h"
 #include "string.h"
+#include "adc.h"
+#include "string.h"
+#include "usbd_cdc_if.h"
 
 /* USER CODE END Includes */
 
@@ -51,11 +55,16 @@ I2C_HandleTypeDef hi2c1;
 
 SPI_HandleTypeDef hspi2;
 
-UART_HandleTypeDef huart6;
+TIM_HandleTypeDef htim6;
 
-PCD_HandleTypeDef hpcd_USB_OTG_FS;
+UART_HandleTypeDef huart6;
+DMA_HandleTypeDef hdma_usart6_tx;
 
 /* USER CODE BEGIN PV */
+
+
+uint32_t start_time = 0;
+uint32_t end_time = 0;
 
 /* USER CODE END PV */
 
@@ -65,13 +74,13 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI2_Init(void);
-static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_USART6_UART_Init(void);
+static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 
-void read_flash();
-void read_erase_flash();
+//void read_flash();
+//void read_erase_flash();
 
 /* USER CODE END PFP */
 
@@ -81,7 +90,19 @@ void read_erase_flash();
 // unique ID for w25q nor flash
 uint32_t ID = 0;
 //uint8_t RxData[512];
-uint8_t RxData[4608]; // read 18 pages 18 * 256
+uint8_t RxData[256]; // read 18 pages 18 * 256
+//uint8_t RxData[4608]; // read 18 pages 18 * 256
+uint8_t TxData[30] = "Hello world we are in";
+int indx = 0;
+
+
+#define ADC_BUFF_LEN 4096
+uint16_t adc_buff[ADC_BUFF_LEN];	// buffer to store samples
+uint16_t * buff_ptr;
+volatile uint8_t data_ready_flag = 0;
+//static volatile uint16_t * adc_pc;
+int sensor_value;
+char buffer[20];
 
 
 /* USER CODE END 0 */
@@ -93,6 +114,8 @@ uint8_t RxData[4608]; // read 18 pages 18 * 256
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+
+	start_time = HAL_GetTick();
 
   /* USER CODE END 1 */
 
@@ -117,30 +140,42 @@ int main(void)
   MX_DMA_Init();
   MX_I2C1_Init();
   MX_SPI2_Init();
-  MX_USB_OTG_FS_PCD_Init();
   MX_ADC1_Init();
   MX_USART6_UART_Init();
+  MX_USB_DEVICE_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 
   // for W25Q SPI NOR flash
-  W25Q_Reset();
-  ID = W25Q_ReadID();
+  //W25Q_Reset();
+  //ID = W25Q_ReadID();
 
   // data
 
   // change the ID
-  if(0){
+//  if(0){
 
-	  // read_flash();
+//	   read_flash();
 
 	  /**
 	   * Read and erase data
 	   */
 
-	  read_erase_flash();
+//	  read_erase_flash();
 
 
-  }
+//  }
+
+
+  //char msg[16] = "Hello, world";
+
+
+
+//  	  Transmitting dma
+    //HAL_ADC_Start_DMA(ADC_HandleTypeDef *hadc, uint32_t *pData, uint32_t Length);
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buff, ADC_BUFF_LEN);
+//    buff_ptr = adc_buff;
+
 
   /* USER CODE END 2 */
 
@@ -151,6 +186,40 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+  //	  HAL_UART_Transmit(UART_HandleTypeDef *huart, const uint8_t *pData, uint16_t Size, uint32_t Timeout)
+	  	  //HAL_UART_Transmit(&huart6, (uint8_t *)adc_buff, ADC_BUFF_LEN, HAL_MAX_DELAY);
+//	  	  HAL_Delay(1000);
+
+
+//	  	  transmitting via uart works
+
+	  if(data_ready_flag){
+	  	  for(int i = 0; i < ADC_BUFF_LEN; i++){
+	  		  char buffer[4];
+	  		  sprintf(buffer, "%u\r\n", adc_buff[i]);
+	  		  HAL_UART_Transmit(&huart6, (uint8_t *)buffer, strlen(buffer), HAL_MAX_DELAY);
+	  	  }
+	  	  data_ready_flag = 0;
+	  }
+
+
+
+
+
+
+	  // write to memory
+//	  if(ID > 10){
+//		  sprintf((char *)&TxData[0], "Hello from W25Q -- %d", indx++);
+//		  W25Q_Write_Page(uint32_t page, uint16_t offset, uint32_t size, uint8_t * data);
+//		  W25Q_Write_Page(0, 20, sizeof(TxData), TxData);
+//	  }
+
+
+//	  W25Q_Read(uint32_t startPage, uint8_t offset, uint32_t size, uint8_t * rData)
+//	  W25Q_Read(0, 20, 20, &RxData[0]);
+
+//	  HAL_Delay(500);
+
   }
   /* USER CODE END 3 */
 }
@@ -222,7 +291,7 @@ static void MX_ADC1_Init(void)
   */
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
-  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.Resolution = ADC_RESOLUTION_10B;
   hadc1.Init.ScanConvMode = DISABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
@@ -230,7 +299,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
@@ -309,7 +378,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -321,6 +390,44 @@ static void MX_SPI2_Init(void)
   /* USER CODE BEGIN SPI2_Init 2 */
 
   /* USER CODE END SPI2_Init 2 */
+
+}
+
+/**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 0;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 65535;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+
+  /* USER CODE END TIM6_Init 2 */
 
 }
 
@@ -337,6 +444,12 @@ static void MX_USART6_UART_Init(void)
   /* USER CODE END USART6_Init 0 */
 
   /* USER CODE BEGIN USART6_Init 1 */
+	// 663200 - 10K
+	// 500000 -
+	// 460800
+	//250000
+	//115200
+	//57600
 
   /* USER CODE END USART6_Init 1 */
   huart6.Instance = USART6;
@@ -358,41 +471,6 @@ static void MX_USART6_UART_Init(void)
 }
 
 /**
-  * @brief USB_OTG_FS Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USB_OTG_FS_PCD_Init(void)
-{
-
-  /* USER CODE BEGIN USB_OTG_FS_Init 0 */
-
-  /* USER CODE END USB_OTG_FS_Init 0 */
-
-  /* USER CODE BEGIN USB_OTG_FS_Init 1 */
-
-  /* USER CODE END USB_OTG_FS_Init 1 */
-  hpcd_USB_OTG_FS.Instance = USB_OTG_FS;
-  hpcd_USB_OTG_FS.Init.dev_endpoints = 4;
-  hpcd_USB_OTG_FS.Init.speed = PCD_SPEED_FULL;
-  hpcd_USB_OTG_FS.Init.dma_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.phy_itface = PCD_PHY_EMBEDDED;
-  hpcd_USB_OTG_FS.Init.Sof_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.low_power_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.lpm_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.vbus_sensing_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.use_dedicated_ep1 = DISABLE;
-  if (HAL_PCD_Init(&hpcd_USB_OTG_FS) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USB_OTG_FS_Init 2 */
-
-  /* USER CODE END USB_OTG_FS_Init 2 */
-
-}
-
-/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -405,6 +483,9 @@ static void MX_DMA_Init(void)
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  /* DMA2_Stream6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 
 }
 
@@ -448,18 +529,25 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : SPI2_CS_Pin SW_BUTTON_Pin */
-  GPIO_InitStruct.Pin = SPI2_CS_Pin|SW_BUTTON_Pin;
+  /*Configure GPIO pin : SPI2_CS_Pin */
+  GPIO_InitStruct.Pin = SPI2_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(SPI2_CS_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LO_MX_Pin */
   GPIO_InitStruct.Pin = LO_MX_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(LO_MX_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : SW_BUTTON_Pin */
+  GPIO_InitStruct.Pin = SW_BUTTON_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(SW_BUTTON_GPIO_Port, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -475,7 +563,7 @@ void read_flash(){
 		W25Q_Read(1, 85, 20, RxData);			// read 20bytes from page1 offset 85
 		W25Q_Fast_Read(0, 0, 512, RxData); // read 512 bytes from page0
 
-		W25Q_Read(17, 10, 20, RxData);			// read 20bytes from page17 offset 10
+		W25Q_Read(17, 10, 20, RxData);	  	  //HAL_Delay(1);xData);			// read 20bytes from page17 offset 10
 		W25Q_Fast_Read(16, 0, 512, RxData);	// fast read 512bytes page16 no offset
 
 		W25Q_Fast_Read(0, 0, 4608, RxData); // read 18 pages from start no offset
@@ -496,10 +584,25 @@ void read_erase_flash(){
 		W25Q_erase_sector(1);
 		W25Q_Read(17, 10, 20, RxData);
 
-
 }
 
 
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
+	//data_ready_flag = 128;
+	//adc_pc = &adc_buff[0];
+}
+
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
+	//adc_pc = &adc_buff[ADC_BUFF_LEN/2];
+	data_ready_flag = 1;
+}
+
+
+
+void processData(void){
+
+}
 
 
 /* USER CODE END 4 */
